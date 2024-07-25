@@ -1,0 +1,160 @@
+# Constants for piece colors
+WHITE = "white"
+BLACK = "black"
+
+# Unicode symbols for pieces
+uniDict = {
+    WHITE: "⚪",
+    BLACK: "⚫"
+}
+
+# Checkers board class
+class CheckersBoard:
+    def __init__(self):
+        self.board = self.get_starting_board()
+        self.current_turn = WHITE
+        self.message = ""
+
+    def get_starting_board(self):
+        # Initialize an 8x8 board with pieces in starting positions
+        board = [[None] * 8 for _ in range(8)]
+
+        # Place white pieces (lower rows)
+        for row in range(3):
+            for col in range(8):
+                if (row + col) % 2 != 0:
+                    board[row][col] = Piece(WHITE)
+
+        # Place black pieces (upper rows)
+        for row in range(5, 8):
+            for col in range(8):
+                if (row + col) % 2 != 0:
+                    board[row][col] = Piece(BLACK)
+
+        return board
+
+    def print_board(self):
+        print("\n   A  B  C  D  E  F  G  H ")
+        print("  ------------------------")
+        for row in range(8):
+            print(f"{8-row} |", end="")
+            for col in range(8):
+                piece = self.board[row][col]
+                if piece:
+                    print(f" {uniDict[piece.color]} |", end="")
+                else:
+                    print("   |", end="")
+            print("\n  ------------------------")
+        print()
+
+    def parse_position(self, pos_str):
+        try:
+            col = ord(pos_str[0].lower()) - ord('a')
+            row = 8 - int(pos_str[1])
+            if 0 <= col < 8 and 0 <= row < 8:
+                return (row, col)
+        except (IndexError, ValueError):
+            pass
+        return None
+
+    def move_piece(self, start_pos, end_pos):
+        start_row, start_col = start_pos
+        end_row, end_col = end_pos
+
+        piece = self.board[start_row][start_col]
+        if piece and piece.color == self.current_turn:
+            if piece.is_valid_move(start_pos, end_pos, self.board):
+                self.board[end_row][end_col] = self.board[start_row][start_col]
+                self.board[start_row][start_col] = None
+                self.current_turn = BLACK if self.current_turn == WHITE else WHITE
+                return True
+        return False
+
+    def check_game_over(self):
+        # Check if current player has no valid moves left
+        for row in range(8):
+            for col in range(8):
+                piece = self.board[row][col]
+                if piece and piece.color == self.current_turn:
+                    if piece.has_valid_move((row, col), self.board):
+                        return False
+        return True
+
+# Piece class
+class Piece:
+    def __init__(self, color):
+        self.color = color
+
+    def is_valid_move(self, start_pos, end_pos, board):
+        start_row, start_col = start_pos
+        end_row, end_col = end_pos
+
+        # Basic move validation for regular pieces
+        if abs(start_row - end_row) == 1 and abs(start_col - end_col) == 1:
+            if board[end_row][end_col] is None:
+                return True
+
+        # Jump move validation (capture)
+        if abs(start_row - end_row) == 2 and abs(start_col - end_col) == 2:
+            middle_row = (start_row + end_row) // 2
+            middle_col = (start_col + end_col) // 2
+
+            if board[middle_row][middle_col] and board[middle_row][middle_col].color != self.color:
+                if board[end_row][end_col] is None:
+                    board[middle_row][middle_col] = None
+                    return True
+
+        return False
+
+    def has_valid_move(self, pos, board):
+        row, col = pos
+
+        # Check for regular moves
+        for d_row, d_col in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
+            if 0 <= row + d_row < 8 and 0 <= col + d_col < 8:
+                if board[row + d_row][col + d_col] is None:
+                    return True
+
+        # Check for jump moves (captures)
+        for d_row, d_col in [(-2, -2), (-2, 2), (2, -2), (2, 2)]:
+            if 0 <= row + d_row < 8 and 0 <= col + d_col < 8:
+                middle_row = row + d_row // 2
+                middle_col = col + d_col // 2
+                if board[middle_row][middle_col] and board[middle_row][middle_col].color != self.color:
+                    if board[row + d_row][col + d_col] is None:
+                        return True
+
+        return False
+
+# Main function to run the game
+def main():
+    checkers_board = CheckersBoard()
+    print("Welcome to Python Text-Based Checkers!\n")
+    checkers_board.print_board()
+
+    while not checkers_board.check_game_over():
+        player = checkers_board.current_turn
+        print(f"{player.capitalize()}'s turn:")
+        start_pos = None
+        while not start_pos:
+            start_input = input("Enter the starting position (e.g., 'e2'): ")
+            start_pos = checkers_board.parse_position(start_input)
+            if not start_pos:
+                print("Invalid position. Please try again.")
+
+        end_pos = None
+        while not end_pos:
+            end_input = input("Enter the ending position (e.g., 'e4'): ")
+            end_pos = checkers_board.parse_position(end_input)
+            if not end_pos:
+                print("Invalid position. Please try again.")
+
+        if checkers_board.move_piece(start_pos, end_pos):
+            checkers_board.print_board()
+        else:
+            print("Invalid move. Please try again.")
+
+    print(f"{checkers_board.current_turn.capitalize()} has no valid moves left. Game over!")
+
+if __name__ == "__main__":
+    main()
